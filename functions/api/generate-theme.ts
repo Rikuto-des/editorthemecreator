@@ -1,9 +1,100 @@
 interface Env {
   GEMINI_API_KEY: string
+  SUPABASE_URL: string
+  SUPABASE_SERVICE_ROLE_KEY: string
 }
 
 interface RequestBody {
   description: string
+}
+
+const FREE_LIMIT = 5
+
+/** クライアントIPを取得 */
+function getClientIP(request: Request): string {
+  return request.headers.get('CF-Connecting-IP')
+    || request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim()
+    || 'unknown'
+}
+
+/** Supabase REST APIヘルパー */
+function supabaseHeaders(key: string) {
+  return {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  }
+}
+
+/** ログインユーザーのクレジットチェック＆消費 */
+async function checkAndConsumeUserCredits(
+  supabaseUrl: string, serviceKey: string, userId: string,
+): Promise<{ allowed: boolean; remaining: number }> {
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}&select=free_used,paid_balance`,
+    { headers: supabaseHeaders(serviceKey) },
+  )
+  const rows = await res.json() as Array<{ free_used: number; paid_balance: number }>
+  if (!rows || rows.length === 0) return { allowed: false, remaining: 0 }
+
+  const { free_used, paid_balance } = rows[0]
+  const freeRemaining = Math.max(0, FREE_LIMIT - free_used)
+
+  if (freeRemaining > 0) {
+    await fetch(`${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ free_used: free_used + 1 }),
+    })
+    return { allowed: true, remaining: freeRemaining - 1 + paid_balance }
+  } else if (paid_balance > 0) {
+    await fetch(`${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}`, {
+      method: 'PATCH',
+      headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ paid_balance: paid_balance - 1 }),
+    })
+    return { allowed: true, remaining: freeRemaining + paid_balance - 1 }
+  }
+  return { allowed: false, remaining: 0 }
+}
+
+/** 未ログインユーザーのIP制限チェック */
+async function checkIPRateLimit(
+  supabaseUrl: string, serviceKey: string, ip: string,
+): Promise<{ allowed: boolean; remaining: number }> {
+  const res = await fetch(
+    `${supabaseUrl}/rest/v1/generation_log?ip_address=eq.${encodeURIComponent(ip)}&select=id`,
+    { headers: supabaseHeaders(serviceKey) },
+  )
+  const rows = await res.json() as Array<{ id: string }>
+  const used = Array.isArray(rows) ? rows.length : 0
+  return { allowed: used < FREE_LIMIT, remaining: Math.max(0, FREE_LIMIT - used) }
+}
+
+/** 生成ログを記録 */
+async function logGeneration(
+  supabaseUrl: string, serviceKey: string, ip: string, prompt: string, userId?: string,
+) {
+  await fetch(`${supabaseUrl}/rest/v1/generation_log`, {
+    method: 'POST',
+    headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      ip_address: ip,
+      prompt,
+      ...(userId ? { user_id: userId } : {}),
+    }),
+  })
+}
+
+/** Supabase JWTからuser_idを取得（簡易デコード） */
+function getUserIdFromToken(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    const decoded = JSON.parse(atob(payload))
+    return decoded.sub || null
+  } catch {
+    return null
+  }
 }
 
 interface GeminiResponse {
@@ -76,11 +167,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   }
 
   const apiKey = context.env.GEMINI_API_KEY
-  if (!apiKey) {
+  const supabaseUrl = context.env.SUPABASE_URL
+  const serviceKey = context.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!apiKey || !supabaseUrl || !serviceKey) {
     return new Response(
       JSON.stringify({ error: 'サーバーの設定エラーです。管理者に連絡してください。' }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
@@ -103,6 +197,30 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       JSON.stringify({ error: 'テーマの説明を入力してください。' }),
       { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     )
+  }
+
+  // --- サーバーサイド クレジットチェック ---
+  const authHeader = context.request.headers.get('Authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  const userId = token ? getUserIdFromToken(token) : null
+  const clientIP = getClientIP(context.request)
+
+  if (userId) {
+    const { allowed } = await checkAndConsumeUserCredits(supabaseUrl, serviceKey, userId)
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: 'クレジットが不足しています。追加クレジットを購入してください。' }),
+        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      )
+    }
+  } else {
+    const { allowed, remaining } = await checkIPRateLimit(supabaseUrl, serviceKey, clientIP)
+    if (!allowed) {
+      return new Response(
+        JSON.stringify({ error: `無料枠（${FREE_LIMIT}回）を使い切りました。アカウントを作成してさらにご利用ください。`, remaining: 0 }),
+        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+      )
+    }
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
@@ -163,6 +281,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     if (parsed.type !== 'dark' && parsed.type !== 'light') {
       parsed.type = 'dark'
     }
+    // 生成成功 → ログ記録
+    logGeneration(supabaseUrl, serviceKey, clientIP, description.trim(), userId || undefined)
+
     return new Response(JSON.stringify(parsed), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })
@@ -180,7 +301,7 @@ export const onRequestOptions: PagesFunction = async () => {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }
