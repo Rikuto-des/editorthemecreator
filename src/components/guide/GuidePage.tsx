@@ -81,7 +81,7 @@ export function GuidePage({ onBack }: GuidePageProps) {
 
       <h1 className="mb-2 text-3xl font-bold">使い方ガイド</h1>
       <p className="mb-8 text-muted-foreground">
-        Editor Theme Creator でテーマを作成し、VS Code / Windsurf に反映するまでの手順を解説します。
+        Themeleon でテーマを作成し、VS Code / Windsurf に反映するまでの手順を解説します。
       </p>
 
       {/* ===== セクション1: テーマを作成する ===== */}

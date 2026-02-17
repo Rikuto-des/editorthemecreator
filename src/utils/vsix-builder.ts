@@ -32,7 +32,7 @@ function buildVsixManifest(slug: string, displayName: string): string {
   <Metadata>
     <Identity Language="en-US" Id="${slug}" Version="1.0.0" Publisher="editor-theme-creator" />
     <DisplayName>${displayName}</DisplayName>
-    <Description>Custom editor theme created with Editor Theme Creator</Description>
+    <Description>Custom editor theme created with Themeleon</Description>
     <Categories>Themes</Categories>
   </Metadata>
   <Installation>

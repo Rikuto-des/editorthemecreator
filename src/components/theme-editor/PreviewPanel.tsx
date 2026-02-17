@@ -187,7 +187,7 @@ export function PreviewPanel({ theme }: PreviewPanelProps) {
             ...hl(['titleBar.activeBackground', 'titleBar.activeForeground']),
           }}
         >
-          Editor Theme Creator
+          Themeleon
         </div>
         <div
           className="flex items-center px-3 h-full text-[10px]"

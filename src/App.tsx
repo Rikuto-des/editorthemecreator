@@ -129,8 +129,8 @@ function AppContent() {
                 <Palette className="h-4.5 w-4.5 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-bold leading-tight tracking-tight">Editor Theme Creator</h1>
-                <p className="hidden text-[10px] leading-none text-muted-foreground sm:block">VS Code テーマを簡単に作成</p>
+                <h1 className="text-lg font-bold leading-tight tracking-tight">Themeleon</h1>
+                <p className="hidden text-[10px] leading-none text-muted-foreground sm:block">AI Theme Creator for VS Code</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -201,7 +201,7 @@ function AppContent() {
               <p className="pt-1 text-muted-foreground/70">
                 Built with React, Tailwind CSS, shadcn/ui, Zustand, Lucide Icons, react-colorful, JSZip
               </p>
-              <p className="text-muted-foreground/50">&copy; {new Date().getFullYear()} Editor Theme Creator</p>
+              <p className="text-muted-foreground/50">&copy; {new Date().getFullYear()} Themeleon</p>
             </div>
           </footer>
         )}

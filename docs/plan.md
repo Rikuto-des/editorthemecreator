@@ -1,8 +1,8 @@
-# Editor Theme Creator — サービスプラン & 実装状況
+# Themeleon — サービスプラン & 実装状況
 
 ## サービス概要
 
-VS Code テーマをAIで生成し、手動で細かく調整できるWebアプリ。
+**Themeleon** (Theme + Chameleon) — VS Code テーマをAIで生成し、手動で細かく調整できるWebアプリ。変幻自在にテーマを作れる。
 
 ## コア体験フロー
 
