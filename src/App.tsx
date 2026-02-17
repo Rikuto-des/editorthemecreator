@@ -28,7 +28,7 @@ function AppContent() {
   const [aiLoading, setAiLoading] = useState(false)
   const [lastPrompt, setLastPrompt] = useState('')
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const { credits, consumeCredit } = useCredits()
+  const { credits, refetchCredits } = useCredits()
   const themes = useThemeStore((s) => s.themes)
   const addTheme = useThemeStore((s) => s.addTheme)
   const updateTheme = useThemeStore((s) => s.updateTheme)
@@ -58,13 +58,6 @@ function AppContent() {
   const showEditor = view === 'editor' && selectedThemeId != null && themeExists
 
   const handleAIGenerate = useCallback(async (themeId: string, description: string) => {
-    // クレジットチェック
-    const ok = await consumeCredit()
-    if (!ok) {
-      setUpgradeOpen(true)
-      return
-    }
-
     if (abortRef.current) abortRef.current.abort()
     abortRef.current = new AbortController()
 
@@ -79,12 +72,18 @@ function AppContent() {
         tokenColors: generated.tokenColors,
       })
       toast.success('テーマを生成しました')
+      // サーバーサイドでクレジット消費済み → フロントのクレジット表示を更新
+      refetchCredits()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'テーマの生成に失敗しました')
+      const msg = err instanceof Error ? err.message : 'テーマの生成に失敗しました'
+      if (msg.includes('クレジット') || msg.includes('無料枠')) {
+        setUpgradeOpen(true)
+      }
+      toast.error(msg)
     } finally {
       setAiLoading(false)
     }
-  }, [updateTheme, consumeCredit])
+  }, [updateTheme, refetchCredits])
 
   const handleAISubmitFromHome = useCallback((description: string) => {
     if (!credits.canGenerate) {
