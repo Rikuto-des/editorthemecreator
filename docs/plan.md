@@ -57,7 +57,7 @@
 ## リポジトリ & デプロイ
 
 - **GitHub**: https://github.com/Rikuto-des/editorthemecreator
-- **本番**: https://editorthemecreator.pages.dev
+- **本番**: https://theme-leon.com (Cloudflare Pages: editorthemecreator.pages.dev)
 - **Supabase**: プロジェクトID `nfclpcjssetzyazsifda`
 
 ## DB設計
@@ -137,5 +137,5 @@ generation_log (
 1. https://supabase.com/dashboard/project/nfclpcjssetzyazsifda/auth/providers
 2. Google を有効化 → Client ID / Secret を入力
 3. Authentication → URL Configuration:
-   - Site URL: `https://editorthemecreator.pages.dev`
-   - Redirect URLs: `https://editorthemecreator.pages.dev`, `http://localhost:5173`
+   - Site URL: `https://theme-leon.com`
+   - Redirect URLs: `https://theme-leon.com`, `https://editorthemecreator.pages.dev`, `http://localhost:5173`
