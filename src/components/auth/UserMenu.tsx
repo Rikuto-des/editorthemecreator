@@ -1,4 +1,5 @@
-import { LogIn, LogOut, Sparkles, CreditCard } from 'lucide-react'
+import { useState } from 'react'
+import { LogIn, LogOut, Sparkles, CreditCard, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -15,6 +16,23 @@ import { useCredits } from '@/hooks'
 export function UserMenu() {
   const { user, loading, signInWithGoogle, signOut } = useAuth()
   const { credits } = useCredits()
+  const [purchasing, setPurchasing] = useState(false)
+
+  const handlePurchase = async () => {
+    if (!user) return
+    setPurchasing(true)
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, userEmail: user.email }),
+      })
+      const data = await res.json() as { url?: string }
+      if (data.url) window.location.href = data.url
+    } catch { /* noop */ } finally {
+      setPurchasing(false)
+    }
+  }
 
   if (loading) return null
 
@@ -60,12 +78,10 @@ export function UserMenu() {
           </span>
           <Badge variant="secondary">{credits.remaining}回</Badge>
         </DropdownMenuItem>
-        {credits.paidBalance <= 0 && credits.remaining <= 3 && (
-          <DropdownMenuItem className="flex items-center gap-2 text-primary">
-            <CreditCard className="h-4 w-4" />
-            クレジットを購入
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem onClick={handlePurchase} disabled={purchasing} className="flex items-center gap-2 text-primary">
+          {purchasing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+          {purchasing ? '処理中...' : 'クレジットを購入 ($3 / 20回)'}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 text-destructive">
           <LogOut className="h-4 w-4" />

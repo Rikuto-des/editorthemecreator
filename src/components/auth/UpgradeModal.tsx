@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, LogIn, CheckCircle2, CreditCard, Loader2 } from 'lucide-react'
+import { Sparkles, LogIn, CheckCircle2, CreditCard, Loader2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -43,32 +43,39 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     }
   }
 
+  // 未ログイン: ログイン誘導
+  // ログイン済み: 購入誘導
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-              <Sparkles className="h-4 w-4 text-primary" />
+              {user ? <CreditCard className="h-4 w-4 text-primary" /> : <Zap className="h-4 w-4 text-primary" />}
             </div>
-            {user ? 'クレジットがなくなりました' : '無料のAI生成枠を使い切りました'}
+            {user ? 'クレジットを追加しましょう' : '無料枠を使い切りました'}
           </DialogTitle>
           <DialogDescription>
             {user
-              ? 'クレジットを追加購入すると、引き続きAI生成をご利用いただけます。'
-              : 'アカウントを作成してクレジットを購入すると、引き続きAI生成をご利用いただけます。'}
+              ? 'クレジットを購入すると、引き続きAIでテーマを生成できます。'
+              : 'ログインすると無料枠がリセットされ、さらにクレジットの購入も可能になります。'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {!user && (
-            <Button onClick={handleLogin} className="w-full gap-2" size="lg">
-              <LogIn className="h-4 w-4" />
-              Googleでログイン
-            </Button>
-          )}
-
-          {user && (
+          {!user ? (
+            <>
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center">
+                <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary" />
+                <p className="text-sm font-medium">Googleアカウントでログイン</p>
+                <p className="mt-1 text-xs text-muted-foreground">ログインするとAI生成の無料枠＋クレジット購入が利用可能に</p>
+              </div>
+              <Button onClick={handleLogin} className="w-full gap-2" size="lg">
+                <LogIn className="h-4 w-4" />
+                Googleでログイン（無料）
+              </Button>
+            </>
+          ) : (
             <div className="rounded-lg border border-border p-4">
               <div className="flex items-center justify-between">
                 <div>

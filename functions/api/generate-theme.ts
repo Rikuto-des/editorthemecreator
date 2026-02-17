@@ -8,7 +8,7 @@ interface RequestBody {
   description: string
 }
 
-const FREE_LIMIT = 5
+const FREE_LIMIT = 3
 
 /** クライアントIPを取得 */
 function getClientIP(request: Request): string {

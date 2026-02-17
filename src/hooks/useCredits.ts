@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
 const LOCAL_STORAGE_KEY = 'etc_free_generations'
-const FREE_LIMIT = 5
+const FREE_LIMIT = 3
 
 interface Credits {
   freeUsed: number
