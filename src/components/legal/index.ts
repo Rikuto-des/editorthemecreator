@@ -1,0 +1,1 @@
+export { TokushohoPage } from './TokushohoPage'

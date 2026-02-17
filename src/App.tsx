@@ -12,6 +12,7 @@ import { PromptLanding } from '@/components/home'
 import { ThemeList } from '@/components/theme-list'
 import { ThemeEditor } from '@/components/theme-editor'
 import { GuidePage } from '@/components/guide'
+import { TokushohoPage } from '@/components/legal'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
 import { useThemeMode, useCredits, useThemeSync } from '@/hooks'
 import { useThemeStore } from '@/stores'
@@ -20,7 +21,7 @@ import type { ThemeTemplate } from '@/constants'
 import { generateThemeFromDescription } from '@/utils/ai-theme-generator'
 import './App.css'
 
-type View = 'home' | 'themes' | 'editor' | 'guide'
+type View = 'home' | 'themes' | 'editor' | 'guide' | 'legal'
 
 function AppContent() {
   const [view, setView] = useState<View>('home')
@@ -186,6 +187,7 @@ function AppContent() {
             />
           )}
           {view === 'guide' && <GuidePage onBack={handleGoHome} />}
+          {view === 'legal' && <TokushohoPage onBack={handleGoHome} />}
           {view === 'themes' && <ThemeList onSelectTheme={handleSelectTheme} onAIGenerate={handleAIGenerate} />}
           {showEditor && (
             <ThemeEditor themeId={selectedThemeId!} onBack={handleGoHome} aiLoading={aiLoading} onAIRegenerate={handleAIGenerate} lastPrompt={lastPrompt} creditsRemaining={credits.remaining} />
@@ -214,7 +216,11 @@ function AppContent() {
               <p className="pt-1 text-muted-foreground/70">
                 Built with React, Tailwind CSS, shadcn/ui, Zustand, Lucide Icons, react-colorful, JSZip
               </p>
-              <p className="text-muted-foreground/50">&copy; {new Date().getFullYear()} Themeleon</p>
+              <p className="text-muted-foreground/50">
+                &copy; {new Date().getFullYear()} Themeleon
+                <span className="mx-2">·</span>
+                <button onClick={() => setView('legal')} className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">特定商取引法に基づく表記</button>
+              </p>
             </div>
           </footer>
         )}
