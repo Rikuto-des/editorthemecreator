@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, AlertCircle, Command } from 'lucide-react'
+import { Sparkles, AlertCircle, Command, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -29,6 +29,7 @@ interface AIGenerateDialogProps {
   title?: string
   descriptionText?: string
   initialPrompt?: string
+  creditsRemaining?: number
 }
 
 export function AIGenerateDialog({
@@ -39,6 +40,7 @@ export function AIGenerateDialog({
   title = 'AIテーマ生成',
   descriptionText = '作りたいテーマのイメージを日本語で入力してください。AIがカラーテーマを自動生成します。',
   initialPrompt = '',
+  creditsRemaining,
 }: AIGenerateDialogProps) {
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
@@ -155,13 +157,30 @@ export function AIGenerateDialog({
         </div>
 
         <DialogFooter className="flex-row items-center justify-between sm:justify-between">
-          <Badge variant="outline" className="hidden gap-1 text-[10px] text-muted-foreground sm:flex">
-            {isMac ? <><Command className="h-2.5 w-2.5" /> + Enter</> : 'Ctrl + Enter'}
-            で送信
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="hidden gap-1 text-[10px] text-muted-foreground sm:flex">
+              {isMac ? <><Command className="h-2.5 w-2.5" /> + Enter</> : 'Ctrl + Enter'}
+              で送信
+            </Badge>
+            {creditsRemaining != null && (
+              <Badge
+                variant="outline"
+                className={`gap-1 text-[10px] ${
+                  creditsRemaining <= 0
+                    ? 'border-destructive/50 text-destructive'
+                    : creditsRemaining <= 2
+                      ? 'border-yellow-500/50 text-yellow-600 dark:text-yellow-400'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                <Zap className="h-2.5 w-2.5" />
+                残り {creditsRemaining} 回
+              </Badge>
+            )}
+          </div>
           <Button
             onClick={handleSubmit}
-            disabled={!description.trim()}
+            disabled={!description.trim() || creditsRemaining === 0}
           >
             <Sparkles className="mr-1 h-4 w-4" />
             テーマを生成

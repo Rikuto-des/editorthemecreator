@@ -18,9 +18,10 @@ interface ThemeEditorProps {
   aiLoading?: boolean
   onAIRegenerate?: (themeId: string, description: string) => void
   lastPrompt?: string
+  creditsRemaining?: number
 }
 
-export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate, lastPrompt = '' }: ThemeEditorProps) {
+export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate, lastPrompt = '', creditsRemaining }: ThemeEditorProps) {
   const theme = useThemeStore((state) => state.themes.find((t) => t.id === themeId))
   const updateTheme = useThemeStore((state) => state.updateTheme)
   const { pushHistory, undo, redo, canUndo, canRedo, clearHistory } = useHistoryStore()
@@ -132,6 +133,7 @@ export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate
               title="AIでテーマを再生成"
               descriptionText="新しいイメージを入力してください。現在のテーマはAI生成前の状態にUndoで戻せます。"
               initialPrompt={lastPrompt}
+              creditsRemaining={creditsRemaining}
             />
           )}
           <span className="hidden text-xs text-muted-foreground sm:inline">自動保存済み</span>

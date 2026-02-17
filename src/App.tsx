@@ -189,7 +189,7 @@ function AppContent() {
           {view === 'guide' && <GuidePage onBack={handleGoHome} />}
           {view === 'themes' && <ThemeList onSelectTheme={handleSelectTheme} onAIGenerate={handleAIGenerate} />}
           {showEditor && (
-            <ThemeEditor themeId={selectedThemeId!} onBack={handleGoHome} aiLoading={aiLoading} onAIRegenerate={handleAIGenerate} lastPrompt={lastPrompt} />
+            <ThemeEditor themeId={selectedThemeId!} onBack={handleGoHome} aiLoading={aiLoading} onAIRegenerate={handleAIGenerate} lastPrompt={lastPrompt} creditsRemaining={credits.remaining} />
           )}
         </main>
         {isHomeOrThemes && (
