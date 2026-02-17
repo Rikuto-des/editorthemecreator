@@ -14,8 +14,8 @@ interface HistoryState {
 
   // Actions
   pushHistory: (theme: Theme) => void
-  undo: () => Theme | null
-  redo: () => Theme | null
+  undo: (currentTheme: Theme) => Theme | null
+  redo: (currentTheme: Theme) => Theme | null
   canUndo: () => boolean
   canRedo: () => boolean
   clearHistory: () => void
@@ -35,39 +35,49 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
 
     set((state) => ({
       past: [...state.past.slice(-state.maxHistory + 1), entry],
-      future: [], // Clear future on new action
+      future: [],
     }))
   },
 
-  undo: () => {
+  undo: (currentTheme) => {
     const state = get()
     if (state.past.length === 0) return null
 
-    const previous = state.past[state.past.length - 1]
+    const currentEntry: HistoryEntry = {
+      themeId: currentTheme.id,
+      snapshot: JSON.parse(JSON.stringify(currentTheme)),
+      timestamp: Date.now(),
+    }
+
+    const restoreTo = state.past[state.past.length - 1]
     set((s) => ({
       past: s.past.slice(0, -1),
-      future: [previous, ...s.future],
+      future: [currentEntry, ...s.future],
     }))
 
-    // Return the snapshot before the last one (or null if only one entry)
-    const newPast = state.past.slice(0, -1)
-    return newPast.length > 0 ? newPast[newPast.length - 1].snapshot : null
+    return restoreTo.snapshot
   },
 
-  redo: () => {
+  redo: (currentTheme) => {
     const state = get()
     if (state.future.length === 0) return null
 
-    const next = state.future[0]
+    const currentEntry: HistoryEntry = {
+      themeId: currentTheme.id,
+      snapshot: JSON.parse(JSON.stringify(currentTheme)),
+      timestamp: Date.now(),
+    }
+
+    const restoreTo = state.future[0]
     set((s) => ({
-      past: [...s.past, next],
+      past: [...s.past, currentEntry],
       future: s.future.slice(1),
     }))
 
-    return next.snapshot
+    return restoreTo.snapshot
   },
 
-  canUndo: () => get().past.length > 1,
+  canUndo: () => get().past.length > 0,
   canRedo: () => get().future.length > 0,
 
   clearHistory: () => {

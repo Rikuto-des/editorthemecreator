@@ -27,12 +27,9 @@ export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate
   const { pushHistory, undo, redo, canUndo, canRedo, clearHistory } = useHistoryStore()
   const prevThemeRef = useRef<string | null>(null)
 
-  // テーマ切り替え時に履歴をクリアして初期状態を保存
+  // テーマ切り替え時に履歴をクリア
   useEffect(() => {
     clearHistory()
-    if (theme) {
-      pushHistory(theme)
-    }
   }, [themeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // AI生成完了時にテーマが変わったら履歴に保存
@@ -46,18 +43,20 @@ export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate
   }, [theme, aiLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUndo = useCallback(() => {
-    const snapshot = undo()
+    if (!theme) return
+    const snapshot = undo(theme)
     if (snapshot) {
       updateTheme(snapshot.id, snapshot)
     }
-  }, [undo, updateTheme])
+  }, [undo, updateTheme, theme])
 
   const handleRedo = useCallback(() => {
-    const snapshot = redo()
+    if (!theme) return
+    const snapshot = redo(theme)
     if (snapshot) {
       updateTheme(snapshot.id, snapshot)
     }
-  }, [redo, updateTheme])
+  }, [redo, updateTheme, theme])
 
   const handleSave = useCallback(() => {
     toast.success('保存済み', { duration: 1500 })
