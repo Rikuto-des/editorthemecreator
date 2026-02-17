@@ -13,7 +13,7 @@ import { ThemeList } from '@/components/theme-list'
 import { ThemeEditor } from '@/components/theme-editor'
 import { GuidePage } from '@/components/guide'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
-import { useThemeMode, useCredits } from '@/hooks'
+import { useThemeMode, useCredits, useThemeSync } from '@/hooks'
 import { useThemeStore } from '@/stores'
 import { createDefaultTheme } from '@/constants'
 import type { ThemeTemplate } from '@/constants'
@@ -36,6 +36,7 @@ function AppContent() {
   const abortRef = useRef<AbortController | null>(null)
 
   useThemeMode()
+  useThemeSync()
 
   const themeExists = useMemo(
     () => selectedThemeId != null && themes.some((t) => t.id === selectedThemeId),
