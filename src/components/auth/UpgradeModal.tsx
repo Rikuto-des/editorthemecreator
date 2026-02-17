@@ -1,4 +1,5 @@
-import { Sparkles, LogIn, CheckCircle2, CreditCard } from 'lucide-react'
+import { useState } from 'react'
+import { Sparkles, LogIn, CheckCircle2, CreditCard, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,9 +17,30 @@ interface UpgradeModalProps {
 
 export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
   const { user, signInWithGoogle } = useAuth()
+  const [purchasing, setPurchasing] = useState(false)
 
   const handleLogin = async () => {
     await signInWithGoogle()
+  }
+
+  const handlePurchase = async () => {
+    if (!user) return
+    setPurchasing(true)
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, userEmail: user.email }),
+      })
+      const data = await res.json() as { url?: string; error?: string }
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch {
+      // エラー時は何もしない（ボタンが再度押せるようになる）
+    } finally {
+      setPurchasing(false)
+    }
   }
 
   return (
@@ -55,12 +77,12 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
                 </div>
                 <p className="text-lg font-bold">$3</p>
               </div>
-              <Button className="mt-3 w-full gap-2" size="lg">
-                <CreditCard className="h-4 w-4" />
-                購入する
+              <Button className="mt-3 w-full gap-2" size="lg" onClick={handlePurchase} disabled={purchasing}>
+                {purchasing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                {purchasing ? '処理中...' : '購入する'}
               </Button>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Lemon Squeezyの安全な決済を利用
+                Stripeの安全な決済を利用
               </p>
             </div>
           )}

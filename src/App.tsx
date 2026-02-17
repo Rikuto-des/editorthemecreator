@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { BookOpen, Palette, FolderOpen } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
@@ -37,6 +37,19 @@ function AppContent() {
 
   useThemeMode()
   useThemeSync()
+
+  // Stripe決済結果のURLパラメータを検知
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const payment = params.get('payment')
+    if (payment === 'success') {
+      toast.success('クレジットの購入が完了しました！', { description: '20回分のAI生成クレジットが追加されました。' })
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (payment === 'cancel') {
+      toast.info('購入がキャンセルされました。')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   const themeExists = useMemo(
     () => selectedThemeId != null && themes.some((t) => t.id === selectedThemeId),
