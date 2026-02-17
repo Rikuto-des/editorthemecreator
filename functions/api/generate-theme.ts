@@ -35,7 +35,15 @@ async function checkAndConsumeUserCredits(
     { headers: supabaseHeaders(serviceKey) },
   )
   const rows = await res.json() as Array<{ free_used: number; paid_balance: number }>
-  if (!rows || rows.length === 0) return { allowed: false, remaining: 0 }
+  if (!rows || rows.length === 0) {
+    // user_credits行が未作成の既存ユーザー → ウェルカムクレジット2で自動作成
+    await fetch(`${supabaseUrl}/rest/v1/user_credits`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ user_id: userId, free_used: 0, paid_balance: 2 }),
+    })
+    return { allowed: true, remaining: FREE_LIMIT + 1 }
+  }
 
   const { free_used, paid_balance } = rows[0]
   const freeRemaining = Math.max(0, FREE_LIMIT - free_used)
