@@ -25,22 +25,20 @@ export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate
   const theme = useThemeStore((state) => state.themes.find((t) => t.id === themeId))
   const updateTheme = useThemeStore((state) => state.updateTheme)
   const { pushHistory, undo, redo, canUndo, canRedo, clearHistory } = useHistoryStore()
-  const prevThemeRef = useRef<string | null>(null)
+  const prevAiLoadingRef = useRef(false)
 
   // テーマ切り替え時に履歴をクリア
   useEffect(() => {
     clearHistory()
   }, [themeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // AI生成完了時にテーマが変わったら履歴に保存
+  // AI生成完了時（aiLoading: true→false）にのみ履歴に保存
   useEffect(() => {
-    if (!theme || aiLoading) return
-    const themeJson = JSON.stringify({ colors: theme.colors, tokenColors: theme.tokenColors })
-    if (prevThemeRef.current !== null && prevThemeRef.current !== themeJson) {
+    if (prevAiLoadingRef.current && !aiLoading && theme) {
       pushHistory(theme)
     }
-    prevThemeRef.current = themeJson
-  }, [theme, aiLoading]) // eslint-disable-line react-hooks/exhaustive-deps
+    prevAiLoadingRef.current = aiLoading
+  }, [aiLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUndo = useCallback(() => {
     if (!theme) return
