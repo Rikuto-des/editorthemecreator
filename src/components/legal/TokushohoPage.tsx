@@ -50,12 +50,12 @@ export function TokushohoPage({ onBack }: TokushohoPageProps) {
 
         <section>
           <h2 className="mb-2 font-semibold text-foreground">商品名</h2>
-          <p className="text-muted-foreground">Themeleon AI生成クレジット 20回分</p>
+          <p className="text-muted-foreground">Themeleon AI生成クレジット 30回分</p>
         </section>
 
         <section>
           <h2 className="mb-2 font-semibold text-foreground">販売価格</h2>
-          <p className="text-muted-foreground">$3.00（USD）/ 20回分</p>
+          <p className="text-muted-foreground">$3.00（USD）/ 30回分</p>
         </section>
 
         <section>

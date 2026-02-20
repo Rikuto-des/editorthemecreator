@@ -1,62 +1,131 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
 const LOCAL_STORAGE_KEY = 'etc_free_generations'
-const FREE_LIMIT = 3
+const DAILY_FREE_LIMIT = 2
+const IP_FREE_LIMIT = 3
 
 interface Credits {
-  freeUsed: number
+  dailyFreeRemaining: number
   paidBalance: number
   remaining: number
   canGenerate: boolean
-  needsLogin: boolean
+}
+
+const DEFAULT_CREDITS: Credits = {
+  dailyFreeRemaining: DAILY_FREE_LIMIT,
+  paidBalance: 0,
+  remaining: DAILY_FREE_LIMIT,
+  canGenerate: true,
+}
+
+// --- モジュールレベル共有ステート ---
+let sharedCredits: Credits = { ...DEFAULT_CREDITS }
+let sharedLoading = true
+const listeners = new Set<() => void>()
+
+function notify() {
+  listeners.forEach((l) => l())
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
+}
+
+function getSnapshot() {
+  return sharedCredits
+}
+
+function setSharedCredits(c: Credits) {
+  sharedCredits = c
+  notify()
 }
 
 export function useCredits() {
   const { user } = useAuth()
-  const [credits, setCredits] = useState<Credits>({
-    freeUsed: 0,
-    paidBalance: 0,
-    remaining: FREE_LIMIT,
-    canGenerate: true,
-    needsLogin: false,
-  })
-  const [loading, setLoading] = useState(true)
+  const credits = useSyncExternalStore(subscribe, getSnapshot)
+  const [loading, setLoading] = useState(sharedLoading)
 
-  // ログイン済み: Supabase からクレジット取得
-  // 未ログイン: localStorage から取得
   const fetchCredits = useCallback(async () => {
     if (user) {
-      const { data } = await supabase
+      const todayStart = new Date()
+      todayStart.setUTCHours(0, 0, 0, 0)
+      const { data: logs } = await supabase
+        .from('generation_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .gte('created_at', todayStart.toISOString())
+
+      const todayUsed = logs?.length ?? 0
+      const dailyFreeRemaining = Math.max(0, DAILY_FREE_LIMIT - todayUsed)
+
+      const { data: cred } = await supabase
         .from('user_credits')
-        .select('free_used, paid_balance')
+        .select('paid_balance')
         .eq('user_id', user.id)
         .single()
 
-      if (data) {
-        const freeRemaining = Math.max(0, FREE_LIMIT - data.free_used)
-        const total = freeRemaining + data.paid_balance
-        setCredits({
-          freeUsed: data.free_used,
-          paidBalance: data.paid_balance,
-          remaining: total,
-          canGenerate: total > 0,
-          needsLogin: false,
-        })
-      }
-    } else {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
-      const freeUsed = stored ? parseInt(stored, 10) : 0
-      const remaining = Math.max(0, FREE_LIMIT - freeUsed)
-      setCredits({
-        freeUsed,
-        paidBalance: 0,
-        remaining,
-        canGenerate: remaining > 0,
-        needsLogin: remaining <= 0,
+      const paidBalance = cred?.paid_balance ?? 0
+      const total = dailyFreeRemaining + paidBalance
+      setSharedCredits({
+        dailyFreeRemaining,
+        paidBalance,
+        remaining: total,
+        canGenerate: total > 0,
       })
+    } else {
+      // localStorageが有効な場合はlocalStorageから取得
+      let stored: string | null = null
+      try {
+        stored = localStorage.getItem(LOCAL_STORAGE_KEY)
+      } catch {
+        // localStorageが無効（プライバシーモードなど）→ APIから取得
+      }
+
+      if (stored !== null) {
+        const freeUsed = parseInt(stored, 10) || 0
+        const remaining = Math.max(0, IP_FREE_LIMIT - freeUsed)
+        setSharedCredits({
+          dailyFreeRemaining: remaining,
+          paidBalance: 0,
+          remaining,
+          canGenerate: remaining > 0,
+        })
+      } else {
+        // localStorageが無効な場合: APIからIPベースの残り回数を取得
+        try {
+          const res = await fetch('/api/check-ip-limit')
+          if (res.ok) {
+            const data = await res.json() as { allowed: boolean; remaining: number }
+            setSharedCredits({
+              dailyFreeRemaining: data.remaining,
+              paidBalance: 0,
+              remaining: data.remaining,
+              canGenerate: data.allowed,
+            })
+          } else {
+            // APIエラー時はフォールバック
+            setSharedCredits({
+              dailyFreeRemaining: IP_FREE_LIMIT,
+              paidBalance: 0,
+              remaining: IP_FREE_LIMIT,
+              canGenerate: true,
+            })
+          }
+        } catch {
+          // ネットワークエラー時はフォールバック
+          setSharedCredits({
+            dailyFreeRemaining: IP_FREE_LIMIT,
+            paidBalance: 0,
+            remaining: IP_FREE_LIMIT,
+            canGenerate: true,
+          })
+        }
+      }
     }
+    sharedLoading = false
     setLoading(false)
   }, [user])
 
@@ -64,48 +133,14 @@ export function useCredits() {
     fetchCredits()
   }, [fetchCredits])
 
-  // AI生成時にクレジットを消費
-  const consumeCredit = useCallback(async (): Promise<boolean> => {
-    if (user) {
-      // ログイン済み: Supabase で消費
-      const { data } = await supabase
-        .from('user_credits')
-        .select('free_used, paid_balance')
-        .eq('user_id', user.id)
-        .single()
+  const consumeLocalCredit = useCallback(() => {
+    if (user) return
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
+    const freeUsed = (stored ? parseInt(stored, 10) : 0) + 1
+    localStorage.setItem(LOCAL_STORAGE_KEY, String(freeUsed))
+    const remaining = Math.max(0, IP_FREE_LIMIT - freeUsed)
+    setSharedCredits({ dailyFreeRemaining: remaining, paidBalance: 0, remaining, canGenerate: remaining > 0 })
+  }, [user])
 
-      if (!data) return false
-
-      const freeRemaining = FREE_LIMIT - data.free_used
-      if (freeRemaining > 0) {
-        // 無料枠から消費
-        await supabase
-          .from('user_credits')
-          .update({ free_used: data.free_used + 1 })
-          .eq('user_id', user.id)
-      } else if (data.paid_balance > 0) {
-        // 有料クレジットから消費
-        await supabase
-          .from('user_credits')
-          .update({ paid_balance: data.paid_balance - 1 })
-          .eq('user_id', user.id)
-      } else {
-        return false
-      }
-
-      await fetchCredits()
-      return true
-    } else {
-      // 未ログイン: localStorage で消費
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
-      const freeUsed = stored ? parseInt(stored, 10) : 0
-      if (freeUsed >= FREE_LIMIT) return false
-
-      localStorage.setItem(LOCAL_STORAGE_KEY, String(freeUsed + 1))
-      await fetchCredits()
-      return true
-    }
-  }, [user, fetchCredits])
-
-  return { credits, loading, consumeCredit, refetchCredits: fetchCredits }
+  return { credits, loading, refetchCredits: fetchCredits, consumeLocalCredit }
 }

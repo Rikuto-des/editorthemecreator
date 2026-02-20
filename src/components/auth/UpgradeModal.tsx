@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 interface UpgradeModalProps {
   open: boolean
@@ -27,9 +28,14 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
     if (!user) return
     setPurchasing(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userId: user.id, userEmail: user.email }),
       })
       const data = await res.json() as { url?: string; error?: string }
@@ -53,12 +59,12 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
               {user ? <CreditCard className="h-4 w-4 text-primary" /> : <Zap className="h-4 w-4 text-primary" />}
             </div>
-            {user ? 'クレジットを追加しましょう' : '無料枠を使い切りました'}
+            {user ? '今日の無料枠を使い切りました' : '無料枠を使い切りました'}
           </DialogTitle>
           <DialogDescription>
             {user
-              ? 'クレジットを購入すると、引き続きAIでテーマを生成できます。'
-              : 'ログインすると無料枠がリセットされ、さらにクレジットの購入も可能になります。'}
+              ? 'クレジットを購入すると、無料枠を超えてAIでテーマを生成できます。無料枠は毎日リセットされます。'
+              : 'ログインすると毎日2回まで無料でAI生成できます。さらにクレジットの購入も可能になります。'}
           </DialogDescription>
         </DialogHeader>
 
@@ -79,7 +85,7 @@ export function UpgradeModal({ open, onOpenChange }: UpgradeModalProps) {
             <div className="rounded-lg border border-border p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">AI生成クレジット 20回分</p>
+                  <p className="font-medium">AI生成クレジット 30回分</p>
                   <p className="text-sm text-muted-foreground">有効期限なし・買い切り</p>
                 </div>
                 <p className="text-lg font-bold">$3</p>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0b"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a78bfa"/>
+      <stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Logo -->
+  <g transform="translate(235, 100) scale(0.12)">
+    <path fill="#46aaa5" d="M605.6,74.4c-4.4-.3-8.6,2.1-10.5,6.2l-34.5,75.8-29-9.7c-174,0-419.8,96.7-419.8,419.8s13.7,167.2,42,223.1c25.2,49.7,61.5,92.4,107.7,126.7,76.5,56.8,179.5,89.4,282.6,89.4s158.5-25.7,211.4-72.5c55.6-49.1,84.9-118,84.9-199.3s-24.7-142.1-72.6-180.1c-37.2-29.5-89-34.5-140.9-34.5-92.2,0-161.7,68.1-161.7,158.4s24.6,81.2,45.2,97.7c26,20.8,55.9,28.2,73.6,28.2,65.5,0,103.1-32.4,103.1-88.8s-27.5-58.3-39.4-61.7c-22.7-6.6-49.2,2.1-60.3,19.8-2.3,3.6-2.1,8.3.3,11.8,2.5,3.5,6.8,5.2,11,4.3,4.3-.9,18.3-2.3,25.2,3.2,1.2,1,4.8,3.9,4.8,13.1,0,13.3-3.6,25.6-29.4,25.6s-14.4-2.2-24.8-9.1c-12.5-8.4-18.9-20.7-18.9-36.4,0-42.9,27.7-67.5,76.1-67.5s89.4,38.5,89.4,105.6-21.7,70.9-40,86.3c-24.8,21-57.9,32.6-93.3,32.6s-81.6-15.3-112.6-40.9c-25.3-21-55.5-58.7-55.5-119.5s21.3-115.9,61.6-151.9c33.7-30.1,79.9-47.4,126.7-47.5,4.5.1,95.6,2.8,173.3,2.8s104.4-14.5,138.6-42c31.8-25.5,49.3-60.3,49.3-97.9,0-71.7-104.6-251.6-363.4-271.1h0Z"/>
+    <path fill="#fff" d="M764.1,207c41.6,0,78.9,34.6,78.9,76.2s-33.8,60.6-75.3,63.2c-65.9,4.2-82.4-30.7-82.4-72.3s37.3-67.1,78.9-67.1Z"/>
+    <path fill="#333" d="M737.6,229.5c16.6,0,30.1,8.9,30.1,25.5s-13.5,30.1-30.1,30.1-30.1-13.5-30.1-30.1,13.5-25.5,30.1-25.5Z"/>
+  </g>
+  <!-- Code editor mockup -->
+  <rect x="620" y="120" width="480" height="390" rx="12" fill="#1e1e2e" stroke="#313244" stroke-width="1"/>
+  <circle cx="648" cy="142" r="6" fill="#f38ba8"/>
+  <circle cx="668" cy="142" r="6" fill="#fab387"/>
+  <circle cx="688" cy="142" r="6" fill="#a6e3a1"/>
+  <rect x="640" y="170" width="120" height="12" rx="2" fill="#cba6f7" opacity="0.7"/>
+  <rect x="660" y="195" width="200" height="12" rx="2" fill="#89b4fa" opacity="0.5"/>
+  <rect x="660" y="220" width="160" height="12" rx="2" fill="#a6e3a1" opacity="0.5"/>
+  <rect x="680" y="245" width="240" height="12" rx="2" fill="#f9e2af" opacity="0.5"/>
+  <rect x="680" y="270" width="180" height="12" rx="2" fill="#f38ba8" opacity="0.5"/>
+  <rect x="660" y="295" width="220" height="12" rx="2" fill="#89dceb" opacity="0.5"/>
+  <rect x="640" y="320" width="140" height="12" rx="2" fill="#cba6f7" opacity="0.7"/>
+  <rect x="660" y="345" width="280" height="12" rx="2" fill="#a6e3a1" opacity="0.4"/>
+  <rect x="640" y="370" width="100" height="12" rx="2" fill="#89b4fa" opacity="0.5"/>
+  <!-- Color palette dots -->
+  <circle cx="660" y="430" r="14" fill="#cba6f7"/>
+  <circle cx="700" y="430" r="14" fill="#89b4fa"/>
+  <circle cx="740" y="430" r="14" fill="#a6e3a1"/>
+  <circle cx="780" y="430" r="14" fill="#f9e2af"/>
+  <circle cx="820" y="430" r="14" fill="#f38ba8"/>
+  <circle cx="860" y="430" r="14" fill="#89dceb"/>
+  <!-- Text -->
+  <text x="300" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="700" fill="#fafafa" text-anchor="middle">Themeleon</text>
+  <text x="300" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#a1a1aa" text-anchor="middle">AI Theme Creator for VS Code</text>
+  <rect x="200" y="420" width="200" height="4" rx="2" fill="url(#accent)"/>
+  <text x="300" y="460" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#71717a" text-anchor="middle">Describe your dream theme.</text>
+  <text x="300" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#71717a" text-anchor="middle">AI creates it in seconds.</text>
+</svg>

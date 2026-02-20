@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react'
-import { ArrowLeft, Undo2, Redo2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Undo2, Redo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -9,6 +9,7 @@ import { useKeyboardShortcuts } from '@/hooks'
 import { AIGenerateDialog } from '@/components/theme-list/AIGenerateDialog'
 import { EditorPanel } from './EditorPanel'
 import { PreviewPanel } from './PreviewPanel'
+import { HackerLoader } from './HackerLoader'
 import { ThemeNameEditor } from './ThemeNameEditor'
 import { ExportDialog } from './ExportDialog'
 
@@ -138,13 +139,7 @@ export function ThemeEditor({ themeId, onBack, aiLoading = false, onAIRegenerate
         </div>
       </div>
       <div className="relative flex flex-1 overflow-hidden">
-        {aiLoading && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-            <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg font-medium">AIがテーマを生成中...</p>
-            <p className="mt-1 text-sm text-muted-foreground">しばらくお待ちください</p>
-          </div>
-        )}
+        {aiLoading && <HackerLoader />}
         <div className="w-80 shrink-0 overflow-y-auto border-r border-border">
           <EditorPanel theme={theme} />
         </div>

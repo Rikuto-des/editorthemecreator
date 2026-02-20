@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { BookOpen, Palette, FolderOpen } from 'lucide-react'
+import { BookOpen, FolderOpen } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ function AppContent() {
   const [aiLoading, setAiLoading] = useState(false)
   const [lastPrompt, setLastPrompt] = useState('')
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const { credits, refetchCredits } = useCredits()
+  const { credits, refetchCredits, consumeLocalCredit } = useCredits()
   const themes = useThemeStore((s) => s.themes)
   const addTheme = useThemeStore((s) => s.addTheme)
   const updateTheme = useThemeStore((s) => s.updateTheme)
@@ -44,13 +44,18 @@ function AppContent() {
     const params = new URLSearchParams(window.location.search)
     const payment = params.get('payment')
     if (payment === 'success') {
-      toast.success('クレジットの購入が完了しました！', { description: '20回分のAI生成クレジットが追加されました。' })
+      toast.success('クレジットの購入が完了しました！', { description: '30回分のAI生成クレジットが追加されました。' })
       window.history.replaceState({}, '', window.location.pathname)
+      // Webhook処理完了を待ってからクレジット表示を更新（複数回リトライ）
+      const delays = [1000, 2000, 3000, 5000, 8000]
+      delays.forEach((delay) => {
+        setTimeout(() => refetchCredits(), delay)
+      })
     } else if (payment === 'cancel') {
       toast.info('購入がキャンセルされました。')
       window.history.replaceState({}, '', window.location.pathname)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const themeExists = useMemo(
     () => selectedThemeId != null && themes.some((t) => t.id === selectedThemeId),
@@ -74,6 +79,7 @@ function AppContent() {
       })
       toast.success('テーマを生成しました')
       // サーバーサイドでクレジット消費済み → フロントのクレジット表示を更新
+      consumeLocalCredit()
       refetchCredits()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'テーマの生成に失敗しました'
@@ -139,8 +145,8 @@ function AppContent() {
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && handleGoHome()}
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Palette className="h-4.5 w-4.5 text-primary-foreground" />
+              <div className="flex h-8 w-8 items-center justify-center">
+                <img src="/logo.svg" alt="Themeleon" className="h-8 w-8" />
               </div>
               <div>
                 <h1 className="text-lg font-bold leading-tight tracking-tight">Themeleon</h1>
@@ -197,29 +203,17 @@ function AppContent() {
           <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
             <div className="mx-auto max-w-3xl space-y-3 px-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider">Credits &amp; Acknowledgments</p>
-              <p>
-                テンプレートテーマの配色は以下のテーマにインスパイアされています:
-              </p>
-              <p className="leading-relaxed">
-                <a href="https://monokai.pro/" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">Monokai</a> by Wimer Hazenberg
-                {' / '}
-                <a href="https://draculatheme.com/" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">Dracula</a> by Zeno Rocha
-                {' / '}
-                <a href="https://www.nordtheme.com/" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">Nord</a> by Arctic Ice Studio
-                {' / '}
-                <a href="https://ethanschoonover.com/solarized/" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">Solarized</a> by Ethan Schoonover
-                {' / '}
-                <a href="https://github.com/primer/github-vscode-theme" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">GitHub Theme</a> by GitHub
-                {' / '}
-                <a href="https://github.com/atom/one-dark-syntax" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">One Dark</a> by Atom
-              </p>
               <p className="pt-1 text-muted-foreground/70">
                 Built with React, Tailwind CSS, shadcn/ui, Zustand, Lucide Icons, react-colorful, JSZip
               </p>
               <p className="text-muted-foreground/50">
                 &copy; {new Date().getFullYear()} Themeleon
                 <span className="mx-2">·</span>
-                <button onClick={() => setView('legal')} className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">特定商取引法に基づく表記</button>
+                <a href="/legal" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">特定商取引法に基づく表記</a>
+                <span className="mx-2">·</span>
+                <a href="/privacy" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">プライバシーポリシー</a>
+                <span className="mx-2">·</span>
+                <a href="/terms" className="underline decoration-muted-foreground/30 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground/50">利用規約</a>
               </p>
             </div>
           </footer>

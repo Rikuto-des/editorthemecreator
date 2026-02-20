@@ -4,7 +4,7 @@ interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-const CREDITS_PER_PURCHASE = 20
+const CREDITS_PER_PURCHASE = 30
 
 /**
  * Stripe Webhook 署名検証（Web Crypto API使用）
@@ -71,6 +71,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     type: string
     data: {
       object: {
+        id?: string
         metadata?: { user_id?: string }
         client_reference_id?: string
         payment_status?: string
@@ -89,21 +90,35 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   const userId = session.metadata?.user_id || session.client_reference_id
+  const sessionId = session.id
   if (!userId) {
     return new Response('No user ID found', { status: 400 })
   }
 
+  const supaHeaders = {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json',
+  }
+
   // Supabase でクレジットを追加（Service Role Key でRLSバイパス）
   try {
+    // 冪等性チェック: 同じセッションIDが既に処理済みなら重複付与を防止
+    if (sessionId) {
+      const dupCheck = await fetch(
+        `${supabaseUrl}/rest/v1/stripe_payment_log?stripe_session_id=eq.${encodeURIComponent(sessionId)}&select=id`,
+        { headers: supaHeaders },
+      )
+      const existing = await dupCheck.json() as Array<{ id: string }>
+      if (Array.isArray(existing) && existing.length > 0) {
+        return new Response('Already processed', { status: 200 })
+      }
+    }
+
     // 現在のクレジットを取得
     const getRes = await fetch(
       `${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}&select=paid_balance`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      },
+      { headers: supaHeaders },
     )
 
     const rows = await getRes.json() as Array<{ paid_balance: number }>
@@ -118,18 +133,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       `${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}`,
       {
         method: 'PATCH',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
+        headers: { ...supaHeaders, 'Prefer': 'return=minimal' },
         body: JSON.stringify({ paid_balance: newBalance }),
       },
     )
 
     if (!updateRes.ok) {
       return new Response('Failed to update credits', { status: 500 })
+    }
+
+    // 処理済みセッションを記録（冪等性保証）
+    if (sessionId) {
+      await fetch(`${supabaseUrl}/rest/v1/stripe_payment_log`, {
+        method: 'POST',
+        headers: { ...supaHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          stripe_session_id: sessionId,
+          user_id: userId,
+          credits_added: CREDITS_PER_PURCHASE,
+        }),
+      })
     }
 
     return new Response('OK', { status: 200 })

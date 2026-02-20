@@ -8,7 +8,8 @@ interface RequestBody {
   description: string
 }
 
-const FREE_LIMIT = 3
+const DAILY_FREE_LIMIT = 2
+const IP_FREE_LIMIT = 3
 
 /** クライアントIPを取得 */
 function getClientIP(request: Request): string {
@@ -26,47 +27,67 @@ function supabaseHeaders(key: string) {
   }
 }
 
-/** ログインユーザーのクレジットチェック＆消費 */
+/** 今日のUTC開始時刻を取得 */
+function todayUTCStart(): string {
+  const d = new Date()
+  d.setUTCHours(0, 0, 0, 0)
+  return d.toISOString()
+}
+
+/** ログインユーザーのクレジットチェック＆消費（日次無料枠2回 + 有料クレジット） */
 async function checkAndConsumeUserCredits(
   supabaseUrl: string, serviceKey: string, userId: string,
 ): Promise<{ allowed: boolean; remaining: number }> {
-  const res = await fetch(
-    `${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}&select=free_used,paid_balance`,
+  // 今日の生成回数を generation_log から取得
+  const todayStart = todayUTCStart()
+  const logRes = await fetch(
+    `${supabaseUrl}/rest/v1/generation_log?user_id=eq.${userId}&created_at=gte.${encodeURIComponent(todayStart)}&select=id`,
     { headers: supabaseHeaders(serviceKey) },
   )
-  const rows = await res.json() as Array<{ free_used: number; paid_balance: number }>
-  if (!rows || rows.length === 0) {
-    // user_credits行が未作成の既存ユーザー → ウェルカムクレジット2で自動作成
+  const logRows = await logRes.json() as Array<{ id: string }>
+  const todayUsed = Array.isArray(logRows) ? logRows.length : 0
+  const dailyFreeRemaining = Math.max(0, DAILY_FREE_LIMIT - todayUsed)
+
+  // user_credits から paid_balance を取得
+  const credRes = await fetch(
+    `${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}&select=paid_balance`,
+    { headers: supabaseHeaders(serviceKey) },
+  )
+  const credRows = await credRes.json() as Array<{ paid_balance: number }>
+  if (!credRows || credRows.length === 0) {
+    // user_credits行が未作成 → 自動作成（paid_balance=0）
     await fetch(`${supabaseUrl}/rest/v1/user_credits`, {
       method: 'POST',
       headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ user_id: userId, free_used: 0, paid_balance: 2 }),
+      body: JSON.stringify({ user_id: userId, free_used: 0, paid_balance: 0 }),
     })
-    return { allowed: true, remaining: FREE_LIMIT + 1 }
+    if (dailyFreeRemaining > 0) {
+      return { allowed: true, remaining: dailyFreeRemaining - 1 }
+    }
+    return { allowed: false, remaining: 0 }
   }
 
-  const { free_used, paid_balance } = rows[0]
-  const freeRemaining = Math.max(0, FREE_LIMIT - free_used)
+  const { paid_balance } = credRows[0]
 
-  if (freeRemaining > 0) {
-    await fetch(`${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ free_used: free_used + 1 }),
-    })
-    return { allowed: true, remaining: freeRemaining - 1 + paid_balance }
-  } else if (paid_balance > 0) {
+  // 日次無料枠が残っていればそれを使用（クレジット消費なし）
+  if (dailyFreeRemaining > 0) {
+    return { allowed: true, remaining: dailyFreeRemaining - 1 + paid_balance }
+  }
+
+  // 有料クレジットを消費
+  if (paid_balance > 0) {
     await fetch(`${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}`, {
       method: 'PATCH',
       headers: { ...supabaseHeaders(serviceKey), 'Prefer': 'return=minimal' },
       body: JSON.stringify({ paid_balance: paid_balance - 1 }),
     })
-    return { allowed: true, remaining: freeRemaining + paid_balance - 1 }
+    return { allowed: true, remaining: paid_balance - 1 }
   }
+
   return { allowed: false, remaining: 0 }
 }
 
-/** 未ログインユーザーのIP制限チェック */
+/** 未ログインユーザーのIP制限チェック（累計3回） */
 async function checkIPRateLimit(
   supabaseUrl: string, serviceKey: string, ip: string,
 ): Promise<{ allowed: boolean; remaining: number }> {
@@ -76,7 +97,7 @@ async function checkIPRateLimit(
   )
   const rows = await res.json() as Array<{ id: string }>
   const used = Array.isArray(rows) ? rows.length : 0
-  return { allowed: used < FREE_LIMIT, remaining: Math.max(0, FREE_LIMIT - used) }
+  return { allowed: used < IP_FREE_LIMIT, remaining: Math.max(0, IP_FREE_LIMIT - used) }
 }
 
 /** 生成ログを記録 */
@@ -225,7 +246,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const { allowed, remaining } = await checkIPRateLimit(supabaseUrl, serviceKey, clientIP)
     if (!allowed) {
       return new Response(
-        JSON.stringify({ error: `無料枠（${FREE_LIMIT}回）を使い切りました。アカウントを作成してさらにご利用ください。`, remaining: 0 }),
+        JSON.stringify({ error: `無料枠（${IP_FREE_LIMIT}回）を使い切りました。アカウントを作成すると毎日${DAILY_FREE_LIMIT}回まで無料で利用できます。`, remaining: 0 }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
       )
     }
@@ -290,7 +311,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       parsed.type = 'dark'
     }
     // 生成成功 → ログ記録
-    logGeneration(supabaseUrl, serviceKey, clientIP, description.trim(), userId || undefined)
+    await logGeneration(supabaseUrl, serviceKey, clientIP, description.trim(), userId || undefined)
 
     return new Response(JSON.stringify(parsed), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },

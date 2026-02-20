@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCredits } from '@/hooks'
+import { supabase } from '@/lib/supabase'
 
 export function UserMenu() {
   const { user, loading, signInWithGoogle, signOut } = useAuth()
@@ -22,9 +23,14 @@ export function UserMenu() {
     if (!user) return
     setPurchasing(true)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
       const res = await fetch('/api/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userId: user.id, userEmail: user.email }),
       })
       const data = await res.json() as { url?: string }
@@ -74,13 +80,21 @@ export function UserMenu() {
         <DropdownMenuItem disabled className="flex justify-between">
           <span className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
-            AI生成クレジット
+            今日の無料枠
           </span>
-          <Badge variant="secondary">{credits.remaining}回</Badge>
+          <Badge variant="secondary">{credits.dailyFreeRemaining}回</Badge>
         </DropdownMenuItem>
+        {credits.paidBalance > 0 && (
+          <DropdownMenuItem disabled className="flex justify-between">
+            <span className="flex items-center gap-2 pl-6">
+              有料クレジット
+            </span>
+            <Badge variant="secondary">{credits.paidBalance}回</Badge>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={handlePurchase} disabled={purchasing} className="flex items-center gap-2 text-primary">
           {purchasing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          {purchasing ? '処理中...' : 'クレジットを購入 ($3 / 20回)'}
+          {purchasing ? '処理中...' : 'クレジットを購入 ($3 / 30回)'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 text-destructive">

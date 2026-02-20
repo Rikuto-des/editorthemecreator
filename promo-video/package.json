@@ -1,0 +1,24 @@
+{
+  "name": "promo-video",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "preview": "remotion studio src/index.ts",
+    "build": "remotion render src/index.ts ThemeleonPromo out/promo.mp4",
+    "render": "remotion render src/index.ts ThemeleonPromo out/promo.mp4",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@remotion/bundler": "^4.0.425",
+    "@remotion/cli": "^4.0.425",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.425",
+    "typescript": "^5.9.3"
+  }
+}

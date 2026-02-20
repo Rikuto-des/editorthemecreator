@@ -8,12 +8,23 @@ interface RequestBody {
   userEmail?: string
 }
 
+/** Supabase JWTからuser_idを取得（簡易デコード） */
+function getUserIdFromToken(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    const decoded = JSON.parse(atob(payload))
+    return decoded.sub || null
+  } catch {
+    return null
+  }
+}
+
 export const onRequestOptions: PagesFunction<Env> = async () => {
   return new Response(null, {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }
@@ -22,7 +33,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   }
 
   const stripeKey = context.env.STRIPE_SECRET_KEY
@@ -49,6 +60,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!userId) {
     return new Response(
       JSON.stringify({ error: 'ログインが必要です。' }),
+      { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+    )
+  }
+
+  // JWT検証: AuthorizationヘッダーからuserIdを取得して照合
+  const authHeader = context.request.headers.get('Authorization')
+  const token = authHeader?.replace('Bearer ', '')
+  const tokenUserId = token ? getUserIdFromToken(token) : null
+  if (!tokenUserId || tokenUserId !== userId) {
+    return new Response(
+      JSON.stringify({ error: '認証が無効です。再ログインしてください。' }),
       { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     )
   }
